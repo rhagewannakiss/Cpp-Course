@@ -1,13 +1,17 @@
-set(FLAGS_TARGET flags)
+add_library(flags INTERFACE)
 
-add_library(${FLAGS_TARGET} INTERFACE)
-
-target_compile_features(${FLAGS_TARGET}
+target_compile_features(flags
     INTERFACE
         cxx_std_20
 )
 
-target_compile_options(${FLAGS_TARGET}
+target_compile_definitions(flags
+    INTERFACE
+        $<$<CONFIG:Debug>:
+            DEBUG>
+)
+
+target_compile_options(flags
     INTERFACE
         -fdiagnostics-color=always
 
@@ -44,7 +48,7 @@ target_compile_options(${FLAGS_TARGET}
         >
 )
 
-target_link_options(${FLAGS_TARGET}
+target_link_options(flags
     INTERFACE
         -fdiagnostics-color=always
 
