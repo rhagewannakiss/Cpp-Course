@@ -5,11 +5,6 @@ target_compile_features(flags
         cxx_std_20
 )
 
-target_compile_definitions(flags
-    INTERFACE
-        $<$<CONFIG:Debug>:
-            DEBUG>
-)
 
 target_compile_options(flags
     INTERFACE
