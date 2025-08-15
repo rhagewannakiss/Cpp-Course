@@ -11,7 +11,8 @@
 int slow_get_page_int(int key);
 
 namespace lirs {
-enum status_t {
+
+enum class status_t {
     miss = 0,
     hit  = 1
 };
@@ -20,11 +21,12 @@ enum status_t {
 
 class cache_t {
 public:
+//------------------- PAGE ----------------------
     struct page_t {
         int     id;
         int     content;
 
-        bool    is_LIR;
+        bool    is_lir;
         bool    is_in_cache;
         bool    is_in_stack;
         bool    is_in_queue;
@@ -35,50 +37,59 @@ public:
         page_t(int id_, int content_)
         : id(id_)
         , content(content_)
-        , is_LIR(false)
+        , is_lir(false)
         , is_in_cache(false)
         , is_in_stack(false)
         , is_in_queue(false)
         {}
     };
-    int hits;
+//------------------------------------------------
 
     cache_t(int size_)
-    : max_LIRS_cap(size_)
-    {
-        //max_HIR_cap = std::max(1, max_LIRS_cap / 2);
-        max_HIR_cap = std::max(1, max_LIRS_cap - 1);
-        max_LIR_cap = max_LIRS_cap - max_HIR_cap;
-        hits = 0;
-    }
+    : max_lirs_cap_(size_)
+    , max_hir_cap_(std::max(1, max_lirs_cap_ / 2))
+    , max_lir_cap_(max_lirs_cap_ - max_hir_cap_)
+    , lir_count_(0)
+    , hits_(0)
+    {}
 
-   ~cache_t() {
+    ~cache_t() {
         for (auto it = page_map.begin(); it != page_map.end(); it++) {
             delete it->second;
         }
     }
 
+    int get_hits() const {
+        return hits_;
+    }
+
     status_t access(int page_id);
-    page_t*  get_page(int page_id);
-    void     manage_queue();
-    void     push_front_s(page_t* page);
-    void     push_front_q(page_t* page);
-    void     demote_LIR_to_HIR();
 
     void dump_to_file();
 
 private:
-    int max_LIRS_cap;
-    int max_LIR_cap;
-    int max_HIR_cap;
-
-    int lir_count = 0;
+    int const max_lirs_cap_;
+    int const max_hir_cap_;
+    int const max_lir_cap_;
+    int       lir_count_;
+    int       hits_;
 
     std::list <page_t*>              stack;
     std::list <page_t*>              queue;
     std::unordered_map<int, page_t*> page_map;  //hash map (for both list and queue)
 
 
+    status_t miss_case(int page_id, page_t* page);
+    status_t lir_hit(int page_id, page_t* page);
+    status_t hir_hit(int page_id, page_t* page);
+
+    page_t*  get_page(int page_id);
+
+    void     push_front_s(page_t* page);
+    void     push_front_q(page_t* page);
+
+    void     demote_lir_to_hir();
+    void     manage_queue();
     void     manage_excess_pages_in_stack();
 };
 } // namespace lirs
