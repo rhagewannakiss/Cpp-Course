@@ -12,7 +12,7 @@ int main() {
     std::cin >> cache_size >> num_of_elems;
     assert(std::cin.good());
 
-    if (std::cin.good() != 1 || cache_size <= 0 || num_of_elems <= 0) {
+    if (!std::cin.good() || cache_size <= 0 || num_of_elems <= 0) {
         std::cout << "Input error!\n";
         return 1;
     }
@@ -27,12 +27,12 @@ int main() {
         assert(std::cin.good());
 
         cache.access(page_id);
-        }
+    }
 
     #ifndef NDEBUG
     cache.dump_to_file();
     #endif //DEBUG
 
-    std::cout << "\nHits: " << cache.hits << '\n';
+    std::cout << "\nHits: " << cache.get_hits() << '\n';
     return 0;
 }
