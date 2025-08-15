@@ -18,122 +18,148 @@ int slow_get_page_int(int key) {
 
 
 namespace lirs {
+
 status_t cache_t::access(int page_id) {
     page_t* page = get_page(page_id);
     assert(page != nullptr);
 
+#ifndef NDEBUG
     std::cerr << "accessing " << page_id << " page ptr=" << page << " in_cache=" << page->is_in_cache << "\n";
+#endif //NDEBUG
 
+    if (page->is_in_cache) {
+        if (page->is_lir) {
+            //LIR-hit
+            return lir_hit(page_id, page);
 
-    if (page->is_in_cache == true) {
-        if (page->is_LIR == true) { //LIR-hit
-            push_front_s(page);
-            manage_excess_pages_in_stack();
-            hits++;
-
-            #ifndef NDEBUG
-                std::cerr << "S: ";
-                for (auto p : stack) std::cerr << p->id << (p->is_LIR ? "L " : "H ");
-                std::cerr << " | Q: ";
-                for (auto p : queue) std::cerr << p->id << (p->is_in_cache ? "r " : "nr ");
-                std::cerr << "\n";
-            #endif
-
-            return hit;
-        } else {                 // HIR-hit
-            push_front_s(page);
-            page->is_LIR = true;
-            lir_count++;
-
-            if (page->is_in_queue == true) {
-                queue.erase(page->queue_it);
-                page->is_in_queue = false;
-            }
-
-            if (lir_count > max_LIR_cap) {
-                demote_LIR_to_HIR();
-            }
-
-            manage_excess_pages_in_stack();
-            hits++;
-
-            #ifndef NDEBUG
-            std::cerr << "S: ";
-            for (auto p : stack) std::cerr << p->id << (p->is_LIR ? "L " : "H ");
-            std::cerr << " | Q: ";
-            for (auto p : queue) std::cerr << p->id << (p->is_in_cache ? "r " : "nr ");
-            std::cerr << "\n";
-            #endif
-
-            return hit;
+        } else {
+            // HIR-hit
+            return hir_hit(page_id, page);
         }
 
-    } else {                     // miss
-        if (lir_count < max_LIR_cap) {  //if the amount of LIR pages in stack isn't equal or more than the max LIR capacity
-            push_front_s(page);
-            page->is_LIR = true;;
-            page->is_in_cache = true;
-            lir_count++;
-
-            #ifndef NDEBUG
-                std::cerr << "MISS: added " << page_id << " to S and Q; queue.size=" << queue.size() << " stack.size=" << stack.size() << "\n";
-                std::cerr << "S: ";
-                for (auto p : stack) std::cerr << p->id << (p->is_LIR ? "L " : "H ");
-                std::cerr << " | Q: ";
-                for (auto p : queue) std::cerr << p->id << (p->is_in_cache ? "r " : "nr ");
-                std::cerr << "\n";
-            #endif
-
-            manage_excess_pages_in_stack();
-            return miss;
-        }
-
-        if (page->is_in_stack == true) {  //if the page was in stack sometime ago and became non-resident HIR after being demoted
-            push_front_s(page);
-            page->is_LIR = true;
-            page->is_in_cache = true;
-            lir_count++;
-
-            if (page->is_in_queue == true) {
-                queue.erase(page->queue_it);
-                page->is_in_queue = false;
-            }
-
-            if (lir_count > max_LIR_cap) {
-                demote_LIR_to_HIR();
-            }
-
-            #ifndef NDEBUG
-                std::cerr << "MISS: added " << page_id << " to S and Q; queue.size=" << queue.size() << " stack.size=" << stack.size() << "\n";
-                std::cerr << "S: ";
-                for (auto p : stack) std::cerr << p->id << (p->is_LIR ? "L " : "H ");
-                std::cerr << " | Q: ";
-                for (auto p : queue) std::cerr << p->id << (p->is_in_cache ? "r " : "nr ");
-                std::cerr << "\n";
-            #endif
-
-            manage_excess_pages_in_stack();
-            return miss;
-        }
-
-        push_front_s(page);  //if the page is completely new we add it to the stack and promot to HIR
-        page->is_LIR = false;
-        push_front_q(page);
-
-        #ifndef NDEBUG
-            std::cerr << "MISS: added " << page_id << " to S and Q; queue.size=" << queue.size() << " stack.size=" << stack.size() << "\n";
-            std::cerr << "S: ";
-            for (auto p : stack) std::cerr << p->id << (p->is_LIR ? "L " : "H ");
-            std::cerr << " | Q: ";
-            for (auto p : queue) std::cerr << p->id << (p->is_in_cache ? "r " : "nr ");
-            std::cerr << "\n";
-        #endif
-
-        manage_excess_pages_in_stack();
-        return miss;
+    } else {
+        // miss
+        return miss_case(page_id, page);
     }
 }
 
+//-------------------- HIT & MISS FUNC. -------------------------
+status_t cache_t::lir_hit(int page_id, page_t* page) {
+    assert(page != nullptr);
+
+    push_front_s(page);
+    manage_excess_pages_in_stack();
+    hits_++;
+
+#ifndef NDEBUG
+    std::cerr << "S: ";
+    for (auto p : stack) std::cerr << p->id << (p->is_lir ? "L " : "H ");
+    std::cerr << " | Q: ";
+    for (auto p : queue) std::cerr << p->id << (p->is_in_cache ? "r " : "nr ");
+    std::cerr << "\n";
+#endif //NDEBUG
+
+    return status_t::hit;
+}
+
+status_t cache_t::hir_hit(int page_id, page_t* page) {
+    assert(page != nullptr);
+
+    push_front_s(page);
+    page->is_lir = true;
+    lir_count_++;
+
+    if (page->is_in_queue) {
+        queue.erase(page->queue_it);
+        page->is_in_queue = false;
+    }
+
+    if (lir_count_ > max_lir_cap_) {
+        demote_lir_to_hir();
+    }
+
+    manage_excess_pages_in_stack();
+    hits_++;
+
+#ifndef NDEBUG
+    std::cerr << "S: ";
+    for (auto p : stack) std::cerr << p->id << (p->is_lir ? "L " : "H ");
+    std::cerr << " | Q: ";
+    for (auto p : queue) std::cerr << p->id << (p->is_in_cache ? "r " : "nr ");
+    std::cerr << "\n";
+#endif //NDEBUG
+
+    return status_t::hit;
+}
+
+status_t cache_t::miss_case(int page_id, page_t* page) {
+    assert(page != nullptr);
+
+    if (lir_count_ < max_lir_cap_) {  //if LIR-part of stack isn't full yet
+        push_front_s(page);
+        page->is_lir = true;
+        page->is_in_cache = true;
+        lir_count_++;
+
+#ifndef NDEBUG
+    std::cerr << "MISS: added " << page_id << " to S and Q; queue.size=" << queue.size() << " stack.size=" << stack.size() << "\n";
+    std::cerr << "S: ";
+    for (auto p : stack) std::cerr << p->id << (p->is_lir ? "L " : "H ");
+    std::cerr << " | Q: ";
+    for (auto p : queue) std::cerr << p->id << (p->is_in_cache ? "r " : "nr ");
+    std::cerr << "\n";
+#endif
+
+        manage_excess_pages_in_stack();
+        return status_t::miss;
+    }
+
+    if (page->is_in_stack) {  //if the page was in stack sometime ago and became non-resident HIR after being demoted
+        push_front_s(page);
+        page->is_lir = true;
+        page->is_in_cache = true;
+        lir_count_++;
+
+        if (page->is_in_queue) {
+            queue.erase(page->queue_it);
+            page->is_in_queue = false;
+        }
+
+        if (lir_count_ > max_lir_cap_) {
+            demote_lir_to_hir();
+        }
+
+#ifndef NDEBUG
+    std::cerr << "MISS: added " << page_id << " to S and Q; queue.size=" << queue.size() << " stack.size=" << stack.size() << "\n";
+    std::cerr << "S: ";
+    for (auto p : stack) std::cerr << p->id << (p->is_lir ? "L " : "H ");
+    std::cerr << " | Q: ";
+    for (auto p : queue) std::cerr << p->id << (p->is_in_cache ? "r " : "nr ");
+    std::cerr << "\n";
+#endif
+
+        manage_excess_pages_in_stack();
+        return status_t::miss;
+    }
+
+    push_front_s(page);  //if the page is completely new we add it to the stack and promot to HIR
+    page->is_lir = false;
+    push_front_q(page);
+
+#ifndef NDEBUG
+    std::cerr << "MISS: added " << page_id << " to S and Q; queue.size=" << queue.size() << " stack.size=" << stack.size() << "\n";
+    std::cerr << "S: ";
+    for (auto p : stack) std::cerr << p->id << (p->is_lir ? "L " : "H ");
+    std::cerr << " | Q: ";
+    for (auto p : queue) std::cerr << p->id << (p->is_in_cache ? "r " : "nr ");
+    std::cerr << "\n";
+#endif
+
+    manage_excess_pages_in_stack();
+    return status_t::miss;
+}
+
+//------------------------------------------------------------
 
 
 void cache_t::push_front_s(page_t* page) {
@@ -161,7 +187,7 @@ void cache_t::push_front_q(page_t* page) {
     page->is_in_queue = true;
     page->is_in_cache = true;
 
-    while (static_cast<int>(queue.size()) > max_HIR_cap) {
+    while (static_cast<int>(queue.size()) > max_hir_cap_) {
         page_t* ex = queue.back();
         queue.pop_back();
         ex->is_in_queue = false;
@@ -169,28 +195,15 @@ void cache_t::push_front_q(page_t* page) {
     }
 }
 
-/*void cache_t::demote_LIR_to_HIR() {
-    for (auto it = stack.rbegin(); it != stack.rend(); ++it) {
-        cache_t::page_t* cand = *it;
-
-        if (cand->is_LIR) {
-            cand->is_LIR = false;
-            lir_count--;
-
-            push_front_q(cand);
-            break;
-        }
-    }
-}*/
-void cache_t::demote_LIR_to_HIR() {
+void cache_t::demote_lir_to_hir() {
     auto it = stack.end();
 
     while (it != stack.begin()) {
-        --it;
+        it--;
         page_t* cand = *it;
 
-        if (cand->is_LIR) {
-            cand->is_LIR      = false;
+        if (cand->is_lir) {
+            cand->is_lir      = false;
             cand->is_in_stack = false;
 
             queue.push_front(cand);
@@ -205,7 +218,7 @@ void cache_t::demote_LIR_to_HIR() {
 }
 
 void cache_t::manage_queue() {
-    if (static_cast<int>(queue.size()) > max_HIR_cap) {
+    if (static_cast<int>(queue.size()) > max_hir_cap_) {
         page_t* bye_bitch = queue.back();
         queue.pop_back();
 
@@ -222,9 +235,9 @@ cache_t::page_t* cache_t::get_page(int page_id) {
     }
 
     int page_content = slow_get_page_int(page_id);
-    page_t* new_page = new page_t(page_id, page_content);
+    page_t* new_page = new page_t{page_id, page_content};
 
-    new_page->is_LIR        = false;
+    new_page->is_lir        = false;
     new_page->is_in_cache   = false;
 
     page_map[page_id] = new_page;
@@ -233,9 +246,9 @@ cache_t::page_t* cache_t::get_page(int page_id) {
 }
 
 void cache_t::manage_excess_pages_in_stack() {
-    while (stack.empty()             == false
-        && stack.back()->is_LIR      == false
-        && stack.back()->is_in_cache == false) {
+    while (!stack.empty()
+        && !stack.back()->is_lir
+        && !stack.back()->is_in_cache) {
             page_t* last = stack.back();
             stack.pop_back();
             last->is_in_stack = false;
@@ -261,7 +274,7 @@ void cache_t::dump_to_file() {
         page_t* current_page = *s_it;
 
         dump << "page id: " << current_page->id
-             << " | is LIR: " << (current_page->is_LIR ? "yes" : "no")
+             << " | is LIR: " << (current_page->is_lir ? "yes" : "no")
              << " | is in cache: " << (current_page->is_in_cache ? "yes" : "no")
              << "\n";
     }
@@ -271,7 +284,7 @@ void cache_t::dump_to_file() {
         page_t* current_page = *q_it;
 
         dump << "page id: " << current_page->id
-             << " | is LIR: " << (current_page->is_LIR ? "yes" : "no")
+             << " | is LIR: " << (current_page->is_lir ? "yes" : "no")
              << " | is in cache: " << (current_page->is_in_cache ? "yes" : "no")
              << "\n";
     }
