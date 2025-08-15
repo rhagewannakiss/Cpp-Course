@@ -18,11 +18,7 @@ int main() {
     }
 
     std::cout << "\nCashe size: " << cache_size << "\nNum of elems: " << num_of_elems << '\n';
-
-    std::list <lirs::page_t*> stack{nullptr, nullptr, 0};
-    std::list <lirs::page_t*> queue{nullptr, nullptr, 0};
-
-    lirs::cache_t cache{cache_size, &stack, &queue};
+    lirs::cache_t cache{cache_size};
 
     std::cout << "\nPlease input elements:  \n--> ";
     for (int i = 0; i < num_of_elems; i++) {
@@ -33,7 +29,7 @@ int main() {
         cache.access(page_id);
         }
 
-    #ifdef DEBUG
+    #ifndef NDEBUG
     cache.dump_to_file();
     #endif //DEBUG
 
