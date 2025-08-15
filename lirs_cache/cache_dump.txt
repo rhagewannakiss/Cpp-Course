@@ -1,5 +1,0 @@
------------- CACH DUMP ------------
-*********** STACK ***********
- page id: 2 | is LIR: no | is in cache: yes
-*********** QUEUE ***********
- bebra
