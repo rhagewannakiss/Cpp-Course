@@ -266,7 +266,7 @@ void cache_t::dump_to_file() {
              << "\n";
     }
 
-    dump << "*********** QUEUE ***********\n ";
+    dump << "\n\n*********** QUEUE ***********\n ";
     for (auto q_it = queue.begin(); q_it != queue.end(); q_it++) {
         page_t* current_page = *q_it;
 
