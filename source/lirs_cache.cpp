@@ -28,7 +28,9 @@ status_t cache_t::access(int page_id) {
 #endif // NDEBUG
 
     if (page->is_in_cache_) {
-        (page->is_lir_)? lir_hit(page) : hir_hit(page);
+        page->is_lir_
+            ? lir_hit(page)
+            : hir_hit(page);
     } else {
         miss_case(page_id, page);
     }
