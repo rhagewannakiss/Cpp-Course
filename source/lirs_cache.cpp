@@ -27,7 +27,11 @@ status_t cache_t::access(int page_id) {
     std::cerr << "accessing " << page_id << " page ptr=" << page << " in_cache=" << page->is_in_cache_ << "\n";
 #endif // NDEBUG
 
-    return (page->is_in_cache_) ? ((page->is_lir_)? lir_hit(page) : hir_hit(page)) : miss_case(page_id, page);
+    if (page->is_in_cache_) {
+        (page->is_lir_)? lir_hit(page) : hir_hit(page);
+    } else {
+        miss_case(page_id, page);
+    }
 }
 
 //-------------------- HIT & MISS FUNC. -------------------------
