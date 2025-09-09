@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.21)
 
 project(lirs_cache
     VERSION 0.1.0
-    LANGUAGES CXX)
+    LANGUAGES CXX
+)
 
 add_executable(lirs_cache)
 
